@@ -5,39 +5,39 @@ set -euo pipefail
 # docker pull envoyproxy/envoy
 # docker pull citizenstig/httpbin
 # docker pull byrnedo/alpine-curl
+# docker build -t netstat - < netstat.Dockerfile
 
-container_subnet="10.255.217.0/24"
-app_container_ip="10.255.217.83"
-network_name="envoy-test-net"
-
-# set up custom network, so that diego cert and config works
-docker network rm $network_name || true
-docker network create -d bridge --subnet=$container_subnet $network_name
-
-echo launching app, listening on port 8080
-docker run -d --rm -it --name app_container \
-  --network $network_name --ip $app_container_ip \
-  citizenstig/httpbin \
-  gunicorn --bind=$app_container_ip:8080 httpbin:app
-
-echo launching envoy proxy in same net namespace as app
+echo "launching envoy proxy"
 docker run -d --rm -it --name sidecar_proxy \
-  --network=container:app_container \
   -it -v $PWD/envoy_config:/etc/cf-assets/envoy_config \
+  -p 61001:61001 \
   envoyproxy/envoy \
     envoy -c /etc/cf-assets/envoy_config/envoy.yaml \
-     --service-cluster proxy-cluster --service-node "sidecar~$app_container_ip~x~x" \
+     --service-cluster proxy-cluster --service-node "foo" \
      --drain-time-s 10 --log-level info
+
+echo "launching app, listening on port 8080 in same netns"
+docker run -d --rm -it --name app_container \
+  --network=container:sidecar_proxy \
+  citizenstig/httpbin \
+  gunicorn --bind=127.0.0.1:8080 httpbin:app
 
 echo waiting for proxy and app to boot
 sleep 5
 
 echo client does an HTTPS request via the proxy
-docker run --rm --name client \
-  --network=$network_name \
-  byrnedo/alpine-curl \
-    -sv \
-    http://$app_container_ip:61001 > /dev/null
+curl -sv 127.0.0.1:61001 > /dev/null
+
+echo "quick open/close of TCP port"
+nc -vz 127.0.0.1 61001
+nc -vz 127.0.0.1 61001
+nc -vz 127.0.0.1 61001
+
+docker run --rm --network=container:sidecar_proxy \
+  netstat /bin/bash -c "netstat -anp | grep 8080"
+
+echo client does an HTTPS request via the proxy
+curl -sv 127.0.0.1:61001 > /dev/null
 
 echo success
 

@@ -13,7 +13,7 @@ static_resources:
     lb_policy: ROUND_ROBIN
     hosts:
     - socket_address:
-        address: 10.255.217.83
+        address: 127.0.0.1
         port_value: 8080
     circuit_breakers:
       thresholds:
