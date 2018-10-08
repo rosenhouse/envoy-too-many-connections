@@ -26,18 +26,19 @@ echo waiting for proxy and app to boot
 sleep 5
 
 echo client does an HTTPS request via the proxy
-curl -sv 127.0.0.1:61001 > /dev/null
+curl -svk https://127.0.0.1:61001 > /dev/null
 
 echo "quick open/close of TCP port"
-nc -vz 127.0.0.1 61001
-nc -vz 127.0.0.1 61001
-nc -vz 127.0.0.1 61001
+docker run --rm --network=container:sidecar_proxy netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
+docker run --rm --network=container:sidecar_proxy netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
+docker run --rm --network=container:sidecar_proxy netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
+docker run --rm --network=container:sidecar_proxy netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
 
 docker run --rm --network=container:sidecar_proxy \
   netstat /bin/bash -c "netstat -anp | grep 8080"
 
 echo client does an HTTPS request via the proxy
-curl -sv 127.0.0.1:61001 > /dev/null
+time curl -svk https://127.0.0.1:61001 > /dev/null
 
 echo success
 
