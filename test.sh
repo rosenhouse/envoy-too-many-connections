@@ -8,6 +8,8 @@ set -euo pipefail
 # docker pull python:2
 # docker build -t netstat - < netstat.Dockerfile
 
+docker rm -f app sidecar || true
+
 echo "launching envoy proxy"
 docker run -d --rm -it --name sidecar \
   -it -v $PWD/envoy_config:/etc/cf-assets/envoy_config \
@@ -27,25 +29,23 @@ docker run -d --rm -it --name app \
 echo waiting for proxy and app to boot
 sleep 5
 
-echo client does an HTTP request via the proxy
-curl -sv http://127.0.0.1:61001 > /dev/null
+echo client does an https request via the proxy
+curl -ksv https://127.0.0.1:61001 > /dev/null
 
 echo "quick open/close of TCP port"
 docker run --rm --network=container:sidecar netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
 docker run --rm --network=container:sidecar netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
 docker run --rm --network=container:sidecar netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
-docker run --rm --network=container:sidecar netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
 
 docker run --rm --network=container:sidecar \
-  netstat /bin/bash -c "netstat -anp | grep 8080"
+  netstat /bin/bash -c "netstat -anp | grep 8080 | grep ESTAB"
 
-docker run --rm --network=container:sidecar netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
-docker run --rm --network=container:sidecar netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
-docker run --rm --network=container:sidecar netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
-docker run --rm --network=container:sidecar netstat /bin/bash -c "nc -vz 127.0.0.1 61001"
+# watch -n0.5 'docker run --rm --network=container:sidecar netstat /bin/bash -c "netstat -anp | grep 8080 | grep ESTAB"'
+# watch -n0.5 'docker run --rm --network=container:sidecar netstat /bin/bash -c "nc -vz 127.0.0.1 61001"'
 
-echo client does an HTTP request via the proxy
-time curl -sv http://127.0.0.1:61001 > /dev/null
+echo client does an https request via the proxy
+time curl -ksv https://127.0.0.1:61001 > /dev/null
+time curl -ksv https://127.0.0.1:61001 > /dev/null
 
 echo success
 
