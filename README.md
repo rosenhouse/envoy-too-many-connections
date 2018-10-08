@@ -1,22 +1,38 @@
+## sometimes Envoy makes more connections than it should to an upstream
+
+An attempt to reproduce [Envoy issue 4409](https://github.com/envoyproxy/envoy/issues/4409)
+
 notes:
 
 - when Envoy is configured to to TLS termination, we can see occasional hangs on curl with many (NUM_CPUs?) ESTABLISHED connections to the backend
-- when Envoy is configured without TLS termination, things seem fine
+- when Envoy is configured without TLS termination, things seem fine?
 
-```
-watch -n0.5 'docker run --rm --network=container:sidecar netstat /bin/bash -c "nc -vz 127.0.0.1 61001"'
-```
 
-```
-watch -n0.5 'docker run --rm --network=container:sidecar netstat /bin/bash -c "netstat -anp | grep 8080 | grep ESTAB"'
-```
+Open 4 terminals
+
+1. `./setup.sh` launches "app" and "sidecar" processes
+2. `./watch-netstat.sh` watches for established TCP connections
+3. `./ping-loop.sh` mimics a TCP healthcheck
+4. `./time-curl.sh` measures duration of requests
+
 you'll see several (NUM_CPUS?) ESTABLISHED connections
 
+the requests will often be fast, but occasionally more than 1 second
+
 ```
-time curl -k https://127.0.0.1:61001
-<html><head><title>Python app.</title></head><body><p>python, world</p></body></html>
-real	0m21.280s
-user	0m0.019s
-sys	0m0.006s
+starting...
+        0.05 real         0.01 user         0.00 sys
+done.
+starting...
+        0.04 real         0.01 user         0.00 sys
+done.
+starting...
+        4.32 real         0.01 user         0.00 sys
+done.
+starting...
+        0.08 real         0.01 user         0.00 sys
+done.
+starting...
+        0.04 real         0.01 user         0.00 sys
+done.
 ```
-sometimes this is fast, sometimes slow
